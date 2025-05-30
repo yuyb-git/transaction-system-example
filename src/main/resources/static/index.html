@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <title>交易记录管理</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<div id="app" class="container mt-4">
+    <h2>交易记录管理</h2>
+
+    <!-- 新增按钮 -->
+    <button @click="showAddModal = true" class="btn btn-primary mb-3">新增交易</button>
+
+    <!-- 交易表格 -->
+    <table class="table table-bordered table-striped">
+        <thead>
+        <tr>
+            <th>交易ID</th>
+            <th>交易类型</th>
+            <th>交易描述</th>
+            <th>金额</th>
+            <th>时间</th>
+            <th>操作</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr v-for="transaction in transactions" :key="transaction.id">
+            <td>{{ transaction.id }}</td>
+            <td>{{ getTypeLabel(transaction.transactionType) }}</td>
+            <td>{{ transaction.description }}</td>
+            <td>{{ transaction.amount }}</td>
+            <td>{{ transaction.timestamp }}</td>
+            <td>
+                <button @click="openEditModal(transaction)" class="btn btn-info btn-sm me-1">详情</button>
+                <button @click="deleteTransaction(transaction.id)" class="btn btn-danger btn-sm">删除</button>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <!-- 分页控件 -->
+    <nav aria-label="Page navigation">
+        <ul class="pagination justify-content-center">
+            <li class="page-item" :class="{ disabled: currentPage === 1 }">
+                <a class="page-link" href="#" @click.prevent="goToPage(currentPage - 1)">上一页</a>
+            </li>
+            <li
+                    v-for="page in totalPages"
+                    :key="page"
+                    class="page-item"
+                    :class="{ active: currentPage === page }"
+            >
+                <a class="page-link" href="#" @click.prevent="goToPage(page)">{{ page }}</a>
+            </li>
+            <li class="page-item" :class="{ disabled: currentPage === totalPages }">
+                <a class="page-link" href="#" @click.prevent="goToPage(currentPage + 1)">下一页</a>
+            </li>
+        </ul>
+    </nav>
+
+    <!-- 新增/编辑交易对话框 -->
+    <div v-if="showAddModal" class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">{{ isEditing ? '编辑交易' : '新增交易' }}</h5>
+                    <button @click="closeModal" class="btn-close"></button>
+                </div>
+                <div class="modal-body">
+                    <form>
+                        <div class="mb-3">
+                            <label class="form-label">描述</label>
+                            <input v-model="currentTransaction.description" type="text" class="form-control" required />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">金额</label>
+                            <input v-model.number="currentTransaction.amount" type="number" step="0.01" class="form-control" required />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">交易类型</label>
+                            <select v-model="currentTransaction.transactionType" class="form-select" required>
+                                <option v-for="type in transactionTypes" :value="type.value" :key="type.value">
+                                    {{ type.label }}
+                                </option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button @click="submitTransaction" class="btn btn-success">{{ isEditing ? '更新' : '提交' }}</button>
+                    <button @click="closeModal" class="btn btn-secondary">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>    const { createApp, ref, onMounted } = Vue;
+
+createApp({
+    setup() {
+        const transactions = ref([]);
+        const currentTransaction = ref({ description: '', amount: null });
+        const showAddModal = ref(false);
+        const isEditing = ref(false);
+        const currentPage = ref(1);
+        const pageSize = ref(10); // 每页条数
+        const totalPages = ref(1);
+        // 交易类型枚举定义（与后端 TransactionType.java 保持一致）
+        const transactionTypes = [
+            { value: 1, label: '存款交易' },
+            { value: 2, label: '转账交易' },
+            { value: 3, label: '支付交易' }
+        ];
+
+        // 获取交易记录（带分页）
+        function fetchTransactions(page = 1) {
+            // 替换为实际接口地址，支持 page 和 size 参数
+            fetch(`/api/transactions/getTransactionList?page=${page}&size=${pageSize.value}`)
+                .then(res => res.json())
+                .then(data => {
+                    transactions.value = data.data.list || [];
+                    totalPages.value = data.data.pages || 1;
+                    currentPage.value = page;
+                });
+        }
+
+        // 打开新增弹窗
+        function openAddModal() {
+            currentTransaction.value = { description: '', amount: null, type: null };
+            isEditing.value = false;
+            showAddModal.value = true;
+        }
+
+        // 打开编辑弹窗
+        function openEditModal(transaction) {
+            currentTransaction.value = { ...transaction }; // 拷贝对象避免直接修改原数据
+            isEditing.value = true;
+            showAddModal.value = true;
+        }
+
+        // 关闭弹窗
+        function closeModal() {
+            showAddModal.value = false;
+        }
+
+        // 提交新增交易
+        function submitTransaction() {
+            if (isEditing.value) {
+                // 编辑：PUT /transactions/{id}
+                fetch("/api/transactions/updateTransaction", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(currentTransaction.value)
+                }).then(() => {
+                    fetchTransactions(currentPage.value);
+                    showAddModal.value = false;
+                    closeModal();
+                });
+            }else {
+                fetch('/api/transactions/createTransaction', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(currentTransaction.value)
+                }).then(() => {
+                    fetchTransactions(currentPage.value);
+                    currentTransaction.value = { description: '', amount: null };
+                    showAddModal.value = false;
+                });
+            }
+
+        }
+
+        // 删除交易
+        function deleteTransaction(id) {
+            if (confirm('确定要删除该交易吗？')) {
+                fetch(`/api/transactions/deleteTransaction?id=${id}`, {
+                    method: 'POST'
+                }).then(() => {
+                    fetchTransactions(currentPage.value);
+                });
+            }
+        }
+
+        // 查看详情
+        function viewTransaction(transaction) {
+            alert(`ID: ${transaction.id}\n交易类型: ${getTypeLabel(transaction.transactionType)}\n描述: ${transaction.description}\n金额: ${transaction.amount}`);
+        }
+
+        // 切换页面
+        function goToPage(page) {
+            if (page < 1 || page > totalPages.value) return;
+            fetchTransactions(page);
+        }
+
+        function getTypeLabel(typeValue) {
+            const type = transactionTypes.find(t => t.value === typeValue);
+            return type ? type.label : '未知类型';
+        }
+
+        onMounted(() => {
+            fetchTransactions();
+        });
+
+        return {
+            transactions,
+            currentTransaction,
+            showAddModal,
+            currentPage,
+            totalPages,
+            transactionTypes,
+            submitTransaction,
+            deleteTransaction,
+            openAddModal,
+            openEditModal,
+            closeModal,
+            getTypeLabel,
+            goToPage
+        };
+    }
+}).mount('#app');
+</script>
+</body>
+</html>

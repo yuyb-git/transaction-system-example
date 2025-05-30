@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: transaction-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: transaction-system
+  template:
+    metadata:
+      labels:
+        app: transaction-system
+    spec:
+      containers:
+        - name: transaction-system
+          image: transaction-system-admin/transaction-system:latest
+          ports:
+            - containerPort: 8080
