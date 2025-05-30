@@ -22,7 +22,7 @@
 
 ## 本地运行
 
-##### 1. 克隆项目git clone https://gitcode.com/yymeteor/transaction-system-example.git
+##### 1. 克隆项目git clone https://github.com/yuyb-git/transaction-system-example
 ```
 cd transaction-management
 ```
