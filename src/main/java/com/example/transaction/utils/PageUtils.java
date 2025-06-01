@@ -15,6 +15,10 @@ public class PageUtils {
         //分页后list
         List subList = transactionList.subList(pageStart, pageEnd);
         PageInfo pageInfo = new PageInfo(subList);
+        pageInfo.setTotal(totalCount);
+        pageInfo.setPageSize(size);
+        pageInfo.setPageNum(page);
+        pageInfo.setPages((int) Math.ceil((double) totalCount / size));
         return pageInfo;
     }
 

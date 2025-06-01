@@ -1,6 +1,5 @@
 package com.example.transaction.configuration;
 
-import com.example.transaction.global.GlobalConstant;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
